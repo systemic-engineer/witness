@@ -36,6 +36,7 @@ defmodule Witness.MixProject do
       # OpenTelemetry integration
       {:opentelemetry_api, "~> 1.4"},
       {:opentelemetry, "~> 1.5", only: [:dev, :test]},
+      {:opentelemetry_exporter, "~> 1.10", only: [:dev, :test]},
       {:opentelemetry_telemetry, "~> 1.1"},
 
       # Development and testing
