@@ -1,4 +1,8 @@
 # Witness
+[![CI](https://github.com/systemic-engineer/witness/actions/workflows/ci.yml/badge.svg)](https://github.com/systemic-engineer/witness/actions/workflows/ci.yml)
+[![Hexdocs.pm](https://img.shields.io/badge/hexdocs-online-blue)](https://hexdocs.pm/witness/)
+[![Hex.pm](https://img.shields.io/hexpm/v/witness.svg)](https://hex.pm/packages/witness)
+[![Hex.pm Downloads](https://img.shields.io/hexpm/dt/witness)](https://hex.pm/packages/witness)
 
 An opinionated observability library for Elixir built on `:telemetry` with compile-time event registry, zero-duplication event tracking, and OpenTelemetry integration.
 
@@ -8,6 +12,7 @@ An opinionated observability library for Elixir built on `:telemetry` with compi
 - **Compile-Time Registry**: Events discovered automatically via module attributes
 - **Bounded Context Isolation**: Each context has separate observability configuration
 - **OpenTelemetry Integration**: Built-in OpenTelemetry handler for spans and events
+- **Logger Integration**: Emit structured log events through telemetry
 - **Type-Safe**: Comprehensive typespecs and compile-time validation
 
 ## Installation
@@ -128,6 +133,64 @@ defmodule MyApp.MetricsHandler do
   end
 end
 ```
+
+## Logger Integration
+
+Witness provides a `Witness.Logger` module that emits structured log events through telemetry:
+
+```elixir
+defmodule MyApp.Users.Service do
+  require MyApp.Users.Observability, as: O11y
+  require Witness.Logger
+
+  def create_user(params) do
+    Witness.Logger.info(O11y, "Creating user", user_id: params.id)
+
+    case do_create_user(params) do
+      {:ok, user} ->
+        Witness.Logger.info(O11y, "User created successfully", user_id: user.id)
+        {:ok, user}
+
+      {:error, reason} ->
+        Witness.Logger.error(O11y, "User creation failed", reason: reason)
+        {:error, reason}
+    end
+  end
+end
+```
+
+### Built-in Handler
+
+Use `Witness.Handler.Logger` to log telemetry events:
+
+```elixir
+defmodule MyApp.Users.Observability do
+  use Witness,
+    app: :my_app,
+    prefix: [:users],
+    handler: [
+      {Witness.Handler.Logger, level: :info},
+      Witness.Handler.OpenTelemetry
+    ]
+end
+```
+
+The handler automatically:
+- Logs events at the appropriate level (`:debug`, `:info`, `:warning`, `:error`, etc.)
+- Formats spans with duration and status
+- Includes structured metadata
+- Respects per-event log levels
+
+### Available Log Levels
+
+- `Witness.Logger.debug/3` - Debug-level logs
+- `Witness.Logger.info/3` - Info-level logs
+- `Witness.Logger.notice/3` - Notice-level logs
+- `Witness.Logger.warning/3` - Warning-level logs
+- `Witness.Logger.error/3` - Error-level logs
+- `Witness.Logger.critical/3` - Critical-level logs
+- `Witness.Logger.alert/3` - Alert-level logs
+- `Witness.Logger.emergency/3` - Emergency-level logs
 
 ## Configuration
 
