@@ -198,17 +198,25 @@ defmodule Witness.Tracker do
       when Witness.is_context(context) and is_function(span_function, 1) do
     %Span{id: ref} = span = Span.new(context, event_name, meta: meta)
 
-    :telemetry.span(
-      Witness.config(context, :prefix) ++ event_name,
-      Utils.enrich_meta(meta, context: context, ref: ref),
-      fn ->
-        %Span{result: result, meta: span_meta, status: status} = span_function.(span)
+    # Register span in ETS for cross-process tracking
+    Witness.SpanRegistry.register_span(context, ref)
 
-        {
-          result,
-          Utils.enrich_meta(span_meta, context: context, ref: ref, status: status)
-        }
-      end
-    )
+    try do
+      :telemetry.span(
+        Witness.config(context, :prefix) ++ event_name,
+        Utils.enrich_meta(meta, context: context, ref: ref),
+        fn ->
+          %Span{result: result, meta: span_meta, status: status} = span_function.(span)
+
+          {
+            result,
+            Utils.enrich_meta(span_meta, context: context, ref: ref, status: status)
+          }
+        end
+      )
+    after
+      # Unregister span when done
+      Witness.SpanRegistry.unregister_span(context)
+    end
   end
 end

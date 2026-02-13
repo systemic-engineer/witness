@@ -37,11 +37,16 @@ defmodule Witness.Supervisor do
     if Witness.config(context, :active) do
       Logger.info("Will load and start all handlers for context.", context: context)
 
-      context
-      |> load_handler()
-      |> attach_to_context!(context)
-      |> only_with_child_spec()
-      |> Supervisor.init(strategy: :one_for_one)
+      handlers =
+        context
+        |> load_handler()
+        |> attach_to_context!(context)
+        |> only_with_child_spec()
+
+      # Add SpanRegistry as first child
+      children = [Witness.SpanRegistry.child_spec(context) | handlers]
+
+      Supervisor.init(children, strategy: :one_for_one)
     else
       Logger.notice("Will not attach or start handlers for context, as it's inactive.", context: context)
 
